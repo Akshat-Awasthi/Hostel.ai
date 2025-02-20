@@ -116,3 +116,14 @@ target/
 *.pem
 *.key
 *.crt
+
+# Virtual Environment
+venv/
+backend/venv/
+.venv/
+env/
+ENV/
+*.pyc
+__pycache__/
+.Python
+pip-log.txt
