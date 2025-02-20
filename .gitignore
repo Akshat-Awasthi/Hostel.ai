@@ -1,3 +1,70 @@
+# Dependencies
+node_modules/
+/dist
+/dist-ssr
+*.local
+.pnp
+.pnp.js
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing
+/coverage
+.coverage
+.tox/
+.nox/
+.pytest_cache/
+htmlcov/
+
+# Production
+/build
+
+# IDE - VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# IDE - JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE - Eclipse
+.project
+.classpath
+.settings/
+
 # Logs
 logs
 *.log
@@ -7,25 +74,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependency directories
-node_modules/
-dist/
-dist-ssr/
-*.local
+# Docker
+.docker/
+docker-compose.override.yml
 
-# Editor directories and files
-.vscode/
-!.vscode/extensions.json
-.idea/
+# System Files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
 
-# Application configuration
+# Environment files
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Application specific
+/backend/model/*.pkl
+/backend/f.csv
 application.yml
+
+# MongoDB
+/data/db/
+
+# Temporary files
+*.swp
+*.swo
+*~
 
 # Build directories
 target/
@@ -33,30 +108,11 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-# STS
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Cache
+.cache/
+.parcel-cache/
 
-# IntelliJ IDEA
-.idea
-*.iws
-*.iml
-*.ipr
-
-# NetBeans
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-/build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-# VS Code
-.vscode/
+# Local SSL
+*.pem
+*.key
+*.crt

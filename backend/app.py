@@ -7,7 +7,7 @@ from config import MONGO_URI, DB_NAME, COLLECTION_NAME
 from utils import get_analytics_data, get_negative_reviews
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Connect to MongoDB
 client = MongoClient(MONGO_URI)
@@ -53,6 +53,10 @@ def get_food_negative_reviews(food_item):
         "food": food_item,
         "negative_reviews": negative_reviews
     }), 200
+
+# Import and register the agent blueprint
+from agent import agent_bp
+app.register_blueprint(agent_bp)
 
 if __name__ == '__main__':
     app.run(debug=True)

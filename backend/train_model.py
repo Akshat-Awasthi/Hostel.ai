@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report, accuracy_score
 import joblib
 
 # Step 1: Load the dataset
-data = pd.read_csv('C:/Users/abham/OneDrive/Documents/GitHub/Hostel.ai/backend/f.csv')  # ensure that f.csv has Review (Text) and Sentiment Score columns
+data = pd.read_csv('f.csv')  # ensure that f.csv has Review (Text) and Sentiment Score columns
 print("Dataset loaded successfully.")
 
 # Step 2: Extract features and labels
