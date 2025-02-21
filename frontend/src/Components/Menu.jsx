@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import MessMenu from "./lib/const/MessMenu.json"; // Ensure the path and filename are correct
-import Rightbar from './Rightbar';
 import { MdOutlineRestaurantMenu, MdAnalytics, MdDownload, MdRestaurantMenu } from "react-icons/md";
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
@@ -146,58 +145,117 @@ const Menu = () => {
   };
 
   return (
-    <div className='flex flex-row justify-between'>
-      {/* Main Menu Section */}
-      <div className='flex flex-col w-full md:w-full mb-5 ml-5 mr-5'>
-        {/* Header with Analysis Button */}
-        <div className='mt-3 text-lg w-auto font-bold flex justify-between items-center'>
-          <span>Weekly Mess Menu</span>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<MdAnalytics />}
-            onClick={handleAnalyze}
-            disabled={loading}
-            className="mb-4"
-          >
-            {loading ? 'Analyzing...' : 'Analyze Menu'}
-          </Button>
-        </div>
-
-        {/* Iterate through each day */}
-        {MessMenu.map((dayMenu, dayIndex) => (
-          <div key={dayIndex} className='flex flex-col mt-2'>
-            {/* Day Header */}
-            <h2 className='mb-2 font-bold w-full border-b flex items-center'>
-              <MdOutlineRestaurantMenu className='mr-2' />
-              {dayMenu.day}
-            </h2>
-
-            {/* Meals Grid */}
-            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full h-auto'>
-              {dayMenu.meals.map((meal, mealIndex) => (
-                <div
-                  key={mealIndex}
-                  className={`p-4 rounded-md ${colors[mealIndex % colors.length]} shadow-md`}
-                >
-                  <ul>
-                    {/* Meal Time */}
-                    <li className='font-semibold mb-1 text-lg'>{meal.time}</li>
-
-                    {/* Meal Items */}
-                    {meal.items.map((item, itemIndex) => (
-                      <li key={itemIndex} className='list-disc ml-4'>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+    <div className='min-h-screen bg-slate-100 p-4'>
+      <div className='max-w-7xl mx-auto space-y-6'>
+        {/* Header Section */}
+        <div className='bg-white rounded-2xl p-6 shadow-sm'>
+          <div className='flex justify-between items-center'>
+            <div className='flex items-center gap-4'>
+              <div className='h-12 w-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-xl flex items-center justify-center'>
+                <MdOutlineRestaurantMenu className='text-2xl text-white' />
+              </div>
+              <div>
+                <h1 className='text-lg font-bold text-gray-900'>Weekly Mess Menu</h1>
+                <p className='text-xs text-gray-500'>View and analyze the complete mess menu</p>
+              </div>
+            </div>
+            <div className='flex gap-3'>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<MdAnalytics />}
+                onClick={handleAnalyze}
+                disabled={loading}
+                size="small"
+                className="bg-violet-600 hover:bg-violet-700 text-xs"
+              >
+                {loading ? 'Analyzing...' : 'Analyze Menu'}
+              </Button>
             </div>
           </div>
-        ))}
+        </div>
 
-        {/* Analysis Dialog */}
+        {/* Weekly Menu Horizontal Layout */}
+        <div className='bg-white rounded-2xl shadow-sm overflow-hidden'>
+          {/* Meal Times Header */}
+          <div className='grid grid-cols-5 bg-gradient-to-r from-indigo-600 to-violet-600'>
+            <div className='p-4 text-white font-medium text-sm'>
+              Day
+            </div>
+            {['Breakfast', 'Lunch', 'Evening Snacks', 'Dinner'].map((mealTime, index) => (
+              <div key={index} className='p-4 text-white font-medium text-base'>
+                <div>{mealTime}</div>
+                <div className='text-[10px] text-indigo-200 mt-1'>
+                  {mealTime === 'Breakfast' ? '7:00 - 9:00' :
+                   mealTime === 'Lunch' ? '12:30 - 1:00' :
+                   mealTime === 'Evening Snacks' ? '5:00 - 6:00' :
+                   '8:00 - 9:30'}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Days and Items */}
+          {MessMenu.map((day, dayIndex) => (
+            <div key={dayIndex} className='grid grid-cols-5 border-b border-gray-100 last:border-b-0'>
+              {/* Day Column */}
+              <div className={`p-4 ${
+                dayIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+              }`}>
+                <span className='text-sm font-semibold text-gray-900'>{day.day}</span>
+              </div>
+
+              {/* Menu Items for Each Meal */}
+              {['Breakfast', 'Lunch', 'Snacks', 'Dinner'].map((mealTime, timeIndex) => {
+                const meal = day.meals.find(m => m.time === mealTime);
+                return (
+                  <div 
+                    key={`${day.day}-${mealTime}`} 
+                    className={`p-4 ${
+                      dayIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                    } hover:bg-gray-100 transition-colors duration-200`}
+                  >
+                    {meal && (
+                      <ul className='space-y-1.5'>
+                        {meal.items.map((item, itemIndex) => (
+                          <li 
+                            key={itemIndex} 
+                            className='text-sm text-gray-700 flex items-center gap-2'
+                          >
+                            <span className='h-1 w-1 bg-gray-400 rounded-full'></span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Time Legend */}
+        <div className='bg-white rounded-2xl p-4 shadow-sm'>
+          <div className='grid grid-cols-4 gap-4'>
+            {[
+              { meal: 'Breakfast', time: '7:00 - 9:00' },
+              { meal: 'Lunch', time: '12:30 - 1:00' },
+              { meal: 'Evening Snacks', time: '5:00 - 6:00' },
+              { meal: 'Dinner', time: '8:00 - 9:30' }
+            ].map((item, index) => (
+              <div key={index} className='flex items-center gap-3 bg-gray-50 rounded-xl p-3'>
+                <div className='h-2 w-2 rounded-full bg-violet-500'></div>
+                <div>
+                  <div className='text-xs font-medium text-gray-900'>{item.meal}</div>
+                  <div className='text-[10px] text-gray-500'>{item.time}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Analysis Dialog - Only reordered columns */}
         <Dialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
@@ -334,11 +392,6 @@ const Menu = () => {
             </TableContainer>
           </DialogContent>
         </Dialog>
-      </div>
-
-      {/* Right Sidebar */}
-      <div>
-        <Rightbar />
       </div>
     </div>
   );

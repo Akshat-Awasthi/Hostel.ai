@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Rightbar from './Rightbar';
 import MessMenu from './lib/const/MessMenu.json';
 import axios from 'axios';
 import { FaThumbsUp, FaThumbsDown } from 'react-icons/fa'; // Import like and dislike icons
@@ -228,11 +227,6 @@ const Feedback = () => {
             </div>
           </form>
         </div>
-      </div>
-
-      {/* Rightbar */}
-      <div className="hidden md:block w-1/4">
-        <Rightbar />
       </div>
     </div>
   );

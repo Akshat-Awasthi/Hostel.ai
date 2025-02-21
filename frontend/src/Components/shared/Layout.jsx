@@ -79,7 +79,7 @@ const Layout = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row bg-gray-100 h-screen w-screen fixed overflow-hidden">
+    <div className="flex flex-col lg:flex-row bg-white h-screen w-screen fixed overflow-hidden">
       {/* Sidebar */}
       <div
         className={`fixed lg:relative lg:flex ${
@@ -92,7 +92,7 @@ const Layout = () => {
       {/* Main Content */}
       <div className="flex flex-col flex-grow">
         {/* Top Bar */}
-        <div className="h-[7vh] w-full bg-neutral-100 border-y-[1px] border-blue-950 flex items-center px-2">
+        <div className="h-20 pb-[0.7rem] w-full bg-white border-y-[1px] border-gray-200 flex items-center px-2">
           {/* Toggle Sidebar Button (Mobile Only) */}
           <button
             className="text-gray-600 hover:text-gray-400 text-xl lg:hidden"
@@ -103,10 +103,10 @@ const Layout = () => {
           <div>
             <button 
               onClick={() => setShowDialog(true)} 
-              className='flex items-center gap-2 text-base rounded-full bg-blue-700 hover:bg-blue-800 text-white cursor-pointer px-4 py-2 transition-colors duration-200'
+              className='flex items-center gap-2 ml-1 mt-2 text-base rounded-full bg-blue-700 hover:bg-blue-800 text-white cursor-pointer px-3 py-[0.4rem] transition-colors duration-200'
             >
               <FaRobot className="text-lg" />
-              <span>Ask AI</span>
+              <span className='text-sm'>Ask AI</span>
             </button>
 
             {showDialog && (
@@ -130,7 +130,7 @@ const Layout = () => {
                   </div>
 
                   {/* Dialog Content */}
-                  <div className="p-6 bg-gradient-to-b from-blue-50 to-white">
+                  <div className="p-6 bg-white">
                     <div className="space-y-6">
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -245,7 +245,7 @@ const Layout = () => {
         </div>
 
         {/* Content Area */}
-        <div className="flex-grow overflow-auto p-4 bg-gray-50">
+        <div className="flex-grow overflow-auto p-4 bg-white">
           <Outlet />
         </div>
       </div>

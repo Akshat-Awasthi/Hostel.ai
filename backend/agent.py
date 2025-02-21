@@ -56,29 +56,45 @@ def agent():
         # Build the prompt
         prompt = (
             "You are an expert food quality and nutrition consultant with deep knowledge of mess food management. "
-            "Analyze these customer reviews and provide detailed insights. Your response must follow this exact structure:\n\n"
-            "1. Use these sections with proper spacing:\n"
-            "   ## 🍽️ Key Findings\n"
-            "   Brief overview of main points\n\n"
-            "   ## 📊 Quality Analysis\n"
-            "   Detailed analysis with bullet points\n\n"
-            "   ## 🥗 Nutritional Insights\n"
-            "   Health and nutrition details\n\n"
-            "   ## 💡 Recommendations\n"
-            "   Actionable suggestions\n\n"
-            "2. Format Guidelines:\n"
-            "   - Use emojis for better readability\n"
-            "   - Use **bold** for important points\n"
-            "   - Add spacing between sections\n"
-            "   - Use these indicators:\n"
-            "     🟢 for positives\n"
-            "     🔴 for concerns\n"
-            "     ⭐ for highlights\n"
-            "     📌 for important notes\n"
-            "     ✨ for improvements\n\n"
-            f"Context: Analyzing{f' {food}' if food else ' mess food'} reviews\n\n"
-            f"Reviews:\n{context}\n\n"
+            "Analyze the provided context and answer the question with detailed insights. "
+            "Your response must follow this exact structure:\n\n"
+            "## 📊 Quick Overview\n"
+            "* Brief 2-3 line summary\n"
+            "* Key metrics if applicable\n\n"
+            "## 🎯 Direct Answer\n"
+            "**Main Points:**\n"
+            "* Use bullet points for clarity\n"
+            "* Bold important findings\n"
+            "* Keep it focused and relevant\n\n"
+            "## 📈 Analysis\n"
+            "Break down by relevant categories:\n"
+            "* 🟢 **Positives:**\n"
+            "  - Point 1\n"
+            "  - Point 2\n"
+            "* 🔴 **Areas of Concern:**\n"
+            "  - Issue 1\n"
+            "  - Issue 2\n"
+            "* ⭐ **Key Highlights:**\n"
+            "  - Important point 1\n"
+            "  - Important point 2\n\n"
+            "## 💡 Action Items\n"
+            "* 📌 **Immediate Actions:**\n"
+            "  - What needs to be done now\n"
+            "* ✨ **Improvements:**\n"
+            "  - How to enhance further\n\n"
+            "## 💡 Recommendations\n"
+            "* 🔴 **Urgent:** [most critical action]\n"
+            "* 🟡 **Important:** [key improvement]\n"
+            "* 🟢 **Consider:** [helpful suggestion]\n\n"
+            f"Context: {context}\n\n"
             f"Question: {question}\n\n"
+            "Remember:\n"
+            "- Be specific and data-driven\n"
+            "- Use bullet points for clarity\n"
+            "- Bold important information\n"
+            "- Use emojis for better readability\n"
+            "- Keep sections well-spaced\n"
+            "- Focus on actionable insights\n\n"
             "Response (follow the exact structure with markdown formatting):\n\n"
         )
 
@@ -230,6 +246,72 @@ def generate_menu():
     except Exception as e:
         print("Unexpected error:", str(e))
         print("Traceback:", traceback.format_exc())
+        return jsonify({"error": "Internal server error"}), 500
+
+@agent_bp.route('/food-summary', methods=['POST'])
+def food_summary():
+    try:
+        payload = request.get_json()
+        food = payload.get('food')
+        
+        if not food:
+            return jsonify({"error": "Food item not provided"}), 400
+
+        # Retrieve reviews from MongoDB
+        try:
+            query = {"food": food}
+            docs = list(collection.find(query, {"review": 1, "_id": 0}))
+            
+            if not docs:
+                return jsonify({
+                    "summary": f"# No Reviews Available\n\nThere are currently no reviews for {food} in the database."
+                }), 200
+
+            reviews_list = [doc["review"] for doc in docs]
+            context = "\n".join(reviews_list[:20])
+            
+        except Exception as db_error:
+            print("Database error:", str(db_error))
+            return jsonify({"error": "Database error"}), 500
+
+        # Build the prompt specifically for food summary
+        prompt = (
+            f"As a food quality analyst, analyze these reviews for {food} and provide a detailed analysis. "
+            "Format your response exactly as follows:\n\n"
+            "# 🍽️ Analysis Report: {food}\n\n"
+            "## 📈 Review Statistics\n"
+            "* **Total Reviews:** [number]\n"
+            "* **Negative Feedback:** [number]\n"
+            "* **Critical Issues:** [number]\n\n"
+            "## 📝 Executive Summary\n"
+            "> Provide a concise 2-3 line summary highlighting key findings and trends.\n\n"
+            "## 🚫 Major Issues\n"
+            "1. **[Primary Issue]**\n"
+            "   * Frequency: [X]%\n"
+            "   * Impact: High/Medium/Low\n"
+            "2. **[Secondary Issue]**\n"
+            "   * Frequency: [X]%\n"
+            "   * Impact: High/Medium/Low\n\n"
+            "## 💡 Recommendations\n"
+            "* 🔴 **Urgent:** [most critical action]\n"
+            "* 🟡 **Important:** [key improvement]\n"
+            "* 🟢 **Consider:** [helpful suggestion]\n\n"
+            f"Analysis based on review sample:\n> {context}"
+        )
+
+        try:
+            response = model.generate_content(prompt)
+            if not response:
+                return jsonify({"error": "No response from AI model"}), 500
+            
+            return jsonify({"summary": response.text}), 200
+            
+        except Exception as ai_error:
+            print("AI generation error:", str(ai_error))
+            return jsonify({"error": "AI generation error"}), 500
+
+    except Exception as e:
+        print("Unexpected error:", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == '__main__':

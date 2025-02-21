@@ -1,176 +1,192 @@
-import classNames from 'classnames';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar_Links, Sidebar_Logout } from '../lib/const/Navigation';
 import { FaBars } from 'react-icons/fa';
 
-const ClassLinks = 'flex items-center gap-2 p-3 font-light px-3 rounded-sm text-base hover:no-underline';
-
-function SideLink({ item }) {
+const SideLink = ({ item }) => {
   const { pathname } = useLocation();
+  const isActive = pathname === item.path;
+  
   return (
     <Link
       to={item.path}
-      className={classNames(
-        pathname === item.path
-          ? 'text-white relative z-10 border-l-[5px] bg-gradient-to-r from-white/10 to-transparent border-l-[5px] border-white rounded-l-md'
-          : 'text-slate-300',
-        ClassLinks
-      )}
-      style={{
-        backgroundColor: pathname === item.path ? 'transparent' : 'inherit',
-        transition: 'background 0.5s cubic-bezier(0.685, 0.0473, 0.346, 1)',
-      }}
+      className={`
+        relative flex items-center
+        px-4 py-2.5 my-1
+        transition-all duration-200 ease-out
+        rounded-md group
+        ${isActive ? 
+          'bg-blue-50 text-blue-600' : 
+          'text-gray-600 hover:bg-gray-50'
+        }
+      `}
     >
-      <span className="text-xl">{item.icon}</span>
-      {item.label}
-    </Link>
-  );
-}
+      {/* Active indicator */}
+      <div
+        className={`
+          absolute left-0 top-1/2 -translate-y-1/2
+          w-1 h-6 rounded-full
+          transition-all duration-200
+          ${isActive ? 'bg-blue-500' : 'opacity-0'}
+        `}
+      />
+      
+      {/* Icon container */}
+      <div className={`
+        flex items-center justify-center
+        w-8 h-8 mr-3
+        transition-colors duration-200
+        ${isActive ? 'text-blue-600' : 'text-gray-500 group-hover:text-blue-500'}
+      `}>
+        {item.icon}
+      </div>
 
-function SideBottom({ item, onClick }) {
-  const { pathname } = useLocation();
-  return (
-    <Link
-      to={item.path}
-      className={classNames(
-        pathname === item.path
-          ? 'text-white relative z-10 bg-gradient-to-r from-white/10 to-transparent border-l-[5px] border-white rounded-l-md'
-          : 'text-slate-300 hover:bg-gradient-to-r hover:from-white/10 hover:to-transparent hover:border-l-[5px] hover:border-transparent hover:rounded-l-md',
-        ClassLinks,
-        'font-bold pl-14 text-red-500'
-      )}
-      style={{
-        backgroundColor: pathname === item.path ? 'transparent' : 'inherit',
-        transition: 'background 0.5s cubic-bezier(0.685, 0.0473, 0.346, 1)',
-      }}
-      onClick={item.key === 'logout' ? onClick : undefined}
-    >
-      <span className="text-2xl">{item.icon}</span>
-      {item.label}
+      {/* Label */}
+      <span className={`
+        text-sm font-medium
+        transition-colors duration-200
+        ${isActive ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'}
+      `}>
+        {item.label}
+      </span>
     </Link>
   );
-}
+};
+
+const LogoutButton = ({ item, onLogout }) => (
+  <button
+    onClick={onLogout}
+    className="
+      flex items-center w-full
+      px-4 py-2.5
+      rounded-md
+      transition-all duration-200
+      text-gray-600 hover:text-red-600
+      hover:bg-red-50
+      group
+    "
+  >
+    <div className="flex items-center justify-center w-8 h-8 mr-3 text-gray-500 group-hover:text-red-500">
+      {item.icon}
+    </div>
+    <span className="text-sm font-medium">
+      {item.label}
+    </span>
+  </button>
+);
 
 const Sidebar = () => {
   const navigate = useNavigate();
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-  const handleResize = () => {
-    setWindowWidth(window.innerWidth);
-    if (window.innerWidth < 700) {
-      setIsSidebarVisible(false);
-    } else {
-      setIsSidebarVisible(true);
-    }
-  };
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    window.addEventListener('resize', handleResize);
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsSidebarOpen(!mobile);
+    };
+
     handleResize();
+    window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const handleLogout = async () => {
     try {
-      // Optionally, make a request to the logout endpoint (commented out if not needed)
-      // await axios.post('http://localhost:8080/api/v1/auth/logout');
-
-      // Clear the JWT token from localStorage
       localStorage.removeItem('token');
-
-      // Redirect to the login page
       navigate('/login');
     } catch (error) {
-      console.error('Logout failed', error);
-      // Handle logout failure (e.g., show an error message)
+      console.error('Logout failed:', error);
     }
   };
 
-  const toggleSidebar = () => {
-    setIsSidebarVisible(!isSidebarVisible);
-  };
-
   return (
-    <div className=" h-full">
-      {/* Top bar for smaller screens */}
-      {windowWidth < 900 && (
-        <div className="flex flex-row text-black absolute w-[21vw] absolute z-[1000]">
-          <button onClick={toggleSidebar} className="text-xl mr-2 ml-2 mt-1">
-            <FaBars />
-          </button>
-          <div className="text-l mt-1">My Hostel</div>
-        </div>
+    <>
+      {/* Mobile Header */}
+      {isMobile && (
+        <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
+          <div className="flex items-center h-16 px-4">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="
+                p-2 rounded-lg
+                text-gray-600 hover:text-gray-900
+                hover:bg-gray-100
+                transition-colors duration-200
+              "
+            >
+              <FaBars className="text-xl" />
+            </button>
+            <span className="ml-4 text-lg font-semibold text-gray-900">
+              My Hostel
+            </span>
+          </div>
+        </header>
+      )}
+
+      {/* Sidebar Overlay */}
+      {isMobile && isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
       )}
 
       {/* Sidebar */}
-      {windowWidth > 900 && (
-        <div
-          className={classNames(
-            'relative top-0 left-0 h-full bg-blue-950 text-white overflow-hidden transition-transform duration-300 ease-in-out flex flex-col',
-            {
-              'transform -translate-x-full': !isSidebarVisible && windowWidth < 700,
-              'transform translate-x-0': isSidebarVisible || windowWidth >= 700,
-            }
+      <aside
+        className={`
+          fixed top-0 left-0 z-50
+          h-full w-64
+          bg-white
+          border-r border-gray-200
+          transition-transform duration-300 ease-out
+          ${isMobile ? 
+            (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 
+            'translate-x-0'
+          }
+        `}
+      >
+        {/* Header */}
+        <div className="flex items-center h-16 px-6 border-b border-gray-200">
+          <span className="text-lg font-semibold text-gray-900">
+            My Hostel
+          </span>
+          {isMobile && (
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="
+                ml-auto p-2 rounded-lg
+                text-gray-500 hover:text-gray-700
+                hover:bg-gray-100
+                transition-colors duration-200
+              "
+            >
+              ×
+            </button>
           )}
-          style={{ minWidth: '16rem' }}
-        >
-          <div className="flex flex-row m-1 ml-4">
-            <span className="text-xl ml-14 mt-2">My-Hostel</span>
-          </div>
-          
-          <div className="flex-1 flex flex-col py-5 gap-0.5 ml-4">
+        </div>
+
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto px-3 py-6">
+          <nav>
             {Sidebar_Links.map((item) => (
               <SideLink key={item.key} item={item} />
             ))}
-          </div>
-          <div className="flex flex-col py-3 pt-2 border-t border-gray-500 sticky bottom-0">
-            {Sidebar_Logout.map((item) => (
-              <SideBottom onClick={handleLogout} key={item.key} item={item} />
-            ))}
-          </div>
+          </nav>
         </div>
-      )}
 
-      {windowWidth > 900 ||
-        (isSidebarVisible && (
-          <div
-            className={classNames(
-              'absolute top-0 left-0 h-full bg-blue-950 text-white overflow-hidden transition-transform duration-300 ease-in-out flex flex-col',
-              {
-                'transform -translate-x-full': !isSidebarVisible && windowWidth < 900,
-                'transform translate-x-0': isSidebarVisible || windowWidth >= 900,
-              }
-            )}
-            style={{ minWidth: '16rem' }}
-          >
-            <div className="flex flex-row justify-between m-1 ml-4">
-              <span className="text-xl ml-14 mt-2">My-Hostel</span>
-              <button
-                onClick={() => {
-                  setIsSidebarVisible(false);
-                }}
-                className="text-white-900 p-3 focus:outline-none"
-                aria-label="Close sidebar"
-              >
-                &#x2715; {/* Cross button */}
-              </button>
-            </div>
-           
-            <div className="flex-1 flex flex-col py-5 gap-0.5 ml-4">
-              {Sidebar_Links.map((item) => (
-                <SideLink key={item.key} item={item} />
-              ))}
-            </div>
-            <div className="flex flex-col py-3 pt-2 border-t border-gray-500 sticky bottom-0">
-              {Sidebar_Logout.map((item) => (
-                <SideBottom onClick={handleLogout} key={item.key} item={item} />
-              ))}
-            </div>
-          </div>
-        ))}
-    </div>
+        {/* Logout Section */}
+        <div className="p-3 border-t border-gray-200">
+          {Sidebar_Logout.map((item) => (
+            <LogoutButton key={item.key} item={item} onLogout={handleLogout} />
+          ))}
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      
+    </>
   );
 };
 

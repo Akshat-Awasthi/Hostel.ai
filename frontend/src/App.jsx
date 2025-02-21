@@ -7,7 +7,6 @@ import Login from './Components/Login';
 import Menu from './Components/Menu';
 import Profile from './Components/Profile';
 import Layout from './Components/shared/Layout';
-import Chart from "./Components/Chart"
 import Attendence from "./Components/MachineLearning/Attendence"
 import LeaveForm from './Components/LeaveForm';
 import FoodCards from './Components/FoodCards';
@@ -28,7 +27,6 @@ function App() {
           <Route path="/leaveform" element={<LeaveForm />} />
           <Route path="/complaint" element={<Complaint />} />
           <Route path="/attendence" element={<Attendence/>} />
-          <Route path="/chart" element={<Chart />} />
         </Route>
       </Routes>
     </Router>
