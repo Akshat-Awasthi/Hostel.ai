@@ -1,23 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import MessMenu from './lib/const/MessMenu.json';
+import { AiOutlineCheck, AiOutlineClose } from 'react-icons/ai';
 import axios from 'axios';
-import { FaThumbsUp, FaThumbsDown } from 'react-icons/fa'; // Import like and dislike icons
+import MessMenu from './lib/const/MessMenu.json';
 
 const Feedback = () => {
-  // State variables for form inputs
   const [mealDay, setMealDay] = useState('');
   const [mealTime, setMealTime] = useState('');
   const [mealItem, setMealItem] = useState('');
   const [review, setReview] = useState('');
-
-  // State variables for dropdown options
-  const [mealData, setMealData] = useState([]); // List of days
-  const [mealTimes, setMealTimes] = useState([]); // List of times based on selected day
-  const [mealItems, setMealItems] = useState([]); // List of items based on selected day and time
-
-  // State variables for like/dislike (optional enhancement)
-  const [like, setLike] = useState(false);
-  const [dislike, setDislike] = useState(false);
+  const [mealData, setMealData] = useState([]);
+  const [mealTimes, setMealTimes] = useState([]);
+  const [mealItems, setMealItems] = useState([]);
+  const [showModal, setShowModal] = useState(false);
 
   // Fetch unique meal days from MessMenu.json on component mount
   useEffect(() => {
@@ -35,7 +29,6 @@ const Feedback = () => {
       } else {
         setMealTimes([]);
       }
-      // Reset dependent fields
       setMealTime('');
       setMealItem('');
       setMealItems([]);
@@ -61,7 +54,6 @@ const Feedback = () => {
       } else {
         setMealItems([]);
       }
-      // Reset dependent field
       setMealItem('');
     } else {
       setMealItems([]);
@@ -69,165 +61,172 @@ const Feedback = () => {
     }
   }, [mealDay, mealTime]);
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Basic validation
     if (!mealDay || !mealTime || !mealItem || !review) {
       alert('Please fill in all fields.');
       return;
     }
-
     try {
       const res = await axios.post('http://127.0.0.1:5000/reviews', {
         day: mealDay,
         time: mealTime,
         food: mealItem,
         review: review,
-        like: like,
-        dislike: dislike
       });
       console.log(res.data);
       alert('Review submitted successfully!');
-      // Reset form
-      setMealDay('');
-      setMealTime('');
-      setMealItem('');
-      setReview('');
-      setLike(false);
-      setDislike(false);
+      handleReset();
     } catch (error) {
       console.error(error);
       alert('Error submitting review');
     }
   };
 
-  // Handle form reset
   const handleReset = () => {
     setMealDay('');
     setMealTime('');
     setMealItem('');
     setReview('');
-    setLike(false);
-    setDislike(false);
+    setShowModal(false);
   };
 
-  // Handle like button click
-  const handleLike = () => {
-    setLike(!like);
-    if (dislike && like) {
-      setDislike(false);
-    }
-  };
-
-  // Handle dislike button click
-  const handleDislike = () => {
-    setDislike(!dislike);
-    if (like && dislike) {
-      setLike(false);
-    }
-  };
+  const SelectField = ({ label, value, onChange, options, disabled = false }) => (
+    <div className="space-y-3">
+      <label className="text-xs uppercase tracking-wider font-medium text-gray-600 block pl-1">
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm 
+                 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent
+                 disabled:bg-gray-50 disabled:cursor-not-allowed transition duration-200
+                 hover:border-blue-200"
+      >
+        <option value="">{`Select ${label}`}</option>
+        {options.map((option, idx) => (
+          <option key={idx} value={typeof option === 'string' ? option : option.value}>
+            {typeof option === 'string' ? option : option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 
   return (
-    <div className="flex justify-between">
-      {/* Feedback Form */}
-      <div className="relative w-full md:w-2/3 mx-auto top-6 p-8 md:p-12 bg-gradient-to-r from-[#E1D2FF] to-[#BAE5F5] rounded-lg shadow-lg">
-        <div>
-          <h3 className="text-2xl text-center text-black font-bold mb-2">
-            Food Feedback Form
-          </h3>
-          <h3 className="text-base text-center text-[#0C1E33A0] mb-4">
-            Your Feedback Matters A Lot!
-          </h3>
-        </div>
-        <div className="max-w-[28rem] mx-auto p-6 md:p-12 bg-white rounded-lg shadow-lg">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Meal Day */}
-            <div className="flex flex-col">
-              <label className="text-[#000000B3] mb-2 font-bold">Meal Day</label>
-              <select
+    <div className="min-h-screen bg-white p-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-12 space-y-12">
+          {/* Header with more spacing */}
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-4xl font-light text-gray-800">
+              Food <span className="font-bold text-blue-600">Feedback</span>
+            </h2>
+            <p className="text-sm text-gray-500 tracking-wide">
+              Help us enhance your dining experience with your valuable feedback
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-10">
+            {/* Increased gap between grid items */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <SelectField
+                label="Meal Day"
                 value={mealDay}
                 onChange={(e) => setMealDay(e.target.value)}
-                className="p-2 rounded-md border border-[#0000001A] shadow-md"
-              >
-                <option value="">Select Meal Day</option>
-                {mealData.map((day) => (
-                  <option key={day} value={day}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Meal Time */}
-            <div className="flex flex-col">
-              <label className="text-[#000000B3] mb-2 font-bold">Meal Time</label>
-              <select
+                options={mealData}
+              />
+              
+              <SelectField
+                label="Meal Time"
                 value={mealTime}
                 onChange={(e) => setMealTime(e.target.value)}
-                className="p-2 rounded-md border border-[#0000001A] shadow-md"
+                options={mealTimes}
                 disabled={!mealDay}
-              >
-                <option value="">Select Meal Time</option>
-                {mealTimes.map((time) => (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Meal Item */}
-            <div className="flex flex-col">
-              <label className="text-[#000000B3] mb-2 font-bold">Meal Item</label>
-              <select
+              />
+              
+              <SelectField
+                label="Meal Item"
                 value={mealItem}
                 onChange={(e) => setMealItem(e.target.value)}
-                className="p-2 rounded-md border border-[#0000001A] shadow-md"
+                options={mealItems}
                 disabled={!mealTime}
-              >
-                <option value="">Select Meal Item</option>
-                {mealItems.map((item, index) => (
-                  <option key={index} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Review */}
-            <div className="flex flex-col">
-              <label className="text-[#000000B3] mb-2 font-bold">Share Your Review</label>
-              <textarea
-                value={review}
-                onChange={(e) => setReview(e.target.value)}
-                placeholder="Add your review..."
-                className="p-2 rounded-md border border-[#0000001A] shadow-md min-h-[100px]"
               />
             </div>
 
-            {/* Like/Dislike */}
-            
-            {/* Buttons */}
-            <div className="flex justify-end mt-6 gap-4">
+            <div className="space-y-3">
+              <label className="text-xs uppercase tracking-wider font-medium text-gray-600 block pl-1">
+                Your Review
+              </label>
+              <textarea
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                placeholder="Share your dining experience..."
+                className="w-full px-6 py-4 bg-white border border-gray-200 rounded-lg text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent
+                         transition duration-200 min-h-[160px] hover:border-blue-200
+                         placeholder:text-gray-400 placeholder:text-sm"
+              />
+            </div>
+
+            <div className="flex justify-end items-center space-x-6 pt-6">
               <button
                 type="button"
-                onClick={handleReset}
-                className="px-4 py-2 text-[#3b82f6] font-bold border border-[#3b82f6] rounded-md hover:bg-[#3b82f6] hover:text-white transition-colors duration-200"
+                onClick={() => setShowModal(true)}
+                className="px-8 py-3 text-sm font-medium text-gray-600 border border-gray-300 
+                         rounded-lg hover:bg-gray-50 transition-colors duration-200 
+                         focus:outline-none focus:ring-2 focus:ring-gray-200
+                         flex items-center gap-3"
               >
+                <AiOutlineClose className="w-4 h-4" />
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 text-white bg-[#3b82f6] rounded-md hover:bg-[#2563eb] transition-colors duration-200"
+                className="px-8 py-3 text-sm font-medium text-white bg-blue-600 
+                         rounded-lg hover:bg-blue-700 transition-colors duration-200
+                         focus:outline-none focus:ring-2 focus:ring-blue-600
+                         flex items-center gap-3"
               >
-                Submit
+                <AiOutlineCheck className="w-4 h-4" />
+                Submit Feedback
               </button>
             </div>
           </form>
         </div>
       </div>
+
+      {/* Modal with more padding */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-8 space-y-6">
+            <h3 className="text-xl font-medium text-gray-800">
+              Reset Form?
+            </h3>
+            <p className="text-sm text-gray-500">
+              Are you sure you want to clear all entered information?
+            </p>
+            <div className="flex justify-end space-x-4 pt-4">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-6 py-2.5 text-sm font-medium text-gray-600 border border-gray-300 
+                         rounded-lg hover:bg-gray-50 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-red-500 
+                         rounded-lg hover:bg-red-600 transition-colors duration-200"
+              >
+                Reset Form
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

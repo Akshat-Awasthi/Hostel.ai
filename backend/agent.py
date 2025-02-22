@@ -6,6 +6,8 @@ from typing import List
 import google.generativeai as genai
 import traceback
 import json
+from flask_cors import CORS
+import requests
 
 # Import MongoDB configuration from config.py
 from config import MONGO_URI, DB_NAME, COLLECTION_NAME, GEMINI_API_KEY
@@ -24,6 +26,171 @@ model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
 # Create a Blueprint for agent-related endpoints
 agent_bp = Blueprint('agent_bp', __name__)
+
+# Load the knowledge base from a JSON file
+try:
+    with open('knowledge_base.json', 'r') as file:
+        knowledge_base = json.load(file)
+except Exception as e:
+    print(f"Error loading knowledge_base.json: {e}")
+    knowledge_base = {}
+
+# Create a Blueprint for agent-related endpoints
+agent_bp = Blueprint('agent_bp', __name__)
+
+# Enable CORS for the Blueprint
+CORS(agent_bp)
+
+# State management for multi-step interactions
+user_states = {}
+
+@agent_bp.route('/chatbot', methods=['POST'])
+def chatbot():
+    try:
+        # Parse the incoming JSON payload
+        payload = request.get_json()
+        user_message = payload.get('message', '').strip()
+        user_id = payload.get('user_id', 'default_user')  # Use a unique identifier for each user
+
+        print(f"Received user message: {user_message}")  # Debugging
+
+        # Initialize user state if not already present
+        if user_id not in user_states:
+            user_states[user_id] = {"state": None, "data": {}, "intent": None}
+
+        user_state = user_states[user_id]
+        print(f"User state for {user_id}: {user_state}")  # Debugging
+
+        # Handle multi-step form interactions
+        if user_state["state"] == "collecting_data":
+            if user_state["intent"] == "complaint":
+                # Collect complaint details step-by-step
+                if "email" not in user_state["data"]:
+                    if "@" not in user_message:  # Basic email validation
+                        return jsonify({"response": "Please provide a valid email address."})
+                    user_state["data"]["email"] = user_message
+                    return jsonify({"response": "Please provide the topic of your complaint (e.g., Mess Food Problem, Cleanliness Problem, etc.)."})
+                elif "topic" not in user_state["data"]:
+                    user_state["data"]["topic"] = user_message
+                    return jsonify({"response": "Please provide the subject of your complaint."})
+                elif "subject" not in user_state["data"]:
+                    user_state["data"]["subject"] = user_message
+                    return jsonify({"response": "Please describe your complaint in detail."})
+                elif "description" not in user_state["data"]:
+                    user_state["data"]["description"] = user_message
+
+                    # Call the complaint API
+                    complaint_data = user_state["data"]
+                    response = requests.post('http://127.0.0.1:5000/complaint', json=complaint_data)
+                    if response.status_code == 201:
+                        user_states[user_id] = {"state": None, "data": {}, "intent": None}  # Reset state
+                        return jsonify({"response": "Your complaint has been submitted successfully!"})
+                    else:
+                        return jsonify({"response": "There was an error submitting your complaint. Please try again later."})
+
+            elif user_state["intent"] == "leave":
+                # Collect leave form details step-by-step
+                if "name" not in user_state["data"]:
+                    user_state["data"]["name"] = user_message
+                    return jsonify({"response": "Please provide your roll number."})
+                elif "roll_number" not in user_state["data"]:
+                    user_state["data"]["roll_number"] = user_message
+                    return jsonify({"response": "Please provide the reason for your leave."})
+                elif "reason" not in user_state["data"]:
+                    user_state["data"]["reason"] = user_message
+                    return jsonify({"response": "Please provide the date of your leave (YYYY-MM-DD)."})
+                elif "date" not in user_state["data"]:
+                    user_state["data"]["date"] = user_message
+
+                    # Call the leave API
+                    leave_data = user_state["data"]
+                    response = requests.post('http://127.0.0.1:5000/leave', json=leave_data)
+                    if response.status_code == 201:
+                        user_states[user_id] = {"state": None, "data": {}, "intent": None}  # Reset state
+                        return jsonify({"response": "Your leave request has been submitted successfully!"})
+                    else:
+                        return jsonify({"response": "There was an error submitting your leave request. Please try again later."})
+
+            elif user_state["intent"] == "feedback":
+                # Collect feedback details step-by-step
+                if "meal_day" not in user_state["data"]:
+                    user_state["data"]["meal_day"] = user_message
+                    return jsonify({"response": "Please provide the meal time (e.g., Breakfast, Lunch, Dinner)."})
+                elif "meal_time" not in user_state["data"]:
+                    user_state["data"]["meal_time"] = user_message
+                    return jsonify({"response": "Please provide the meal item you want to give feedback on."})
+                elif "meal_item" not in user_state["data"]:
+                    user_state["data"]["meal_item"] = user_message
+                    return jsonify({"response": "Please provide your review of the meal item."})
+                elif "review" not in user_state["data"]:
+                    user_state["data"]["review"] = user_message
+
+                    # Prepare the payload for the /reviews API
+                    feedback_data = {
+                        "food": user_state["data"]["meal_item"],  # Map meal_item to food
+                        "review": user_state["data"]["review"]
+                    }
+                    print(f"Sending feedback data to /reviews: {feedback_data}")  # Debugging
+
+                    try:
+                        response = requests.post('http://127.0.0.1:5000/reviews', json=feedback_data)
+                        print(f"Response from /reviews: {response.status_code}, {response.text}")  # Debugging
+
+                        if response.status_code == 201:
+                            user_states[user_id] = {"state": None, "data": {}, "intent": None}  # Reset state
+                            return jsonify({"response": "Your feedback has been submitted successfully!"})
+                        else:
+                            return jsonify({"response": "There was an error submitting your feedback. Please try again later."})
+                    except Exception as e:
+                        print(f"Error calling /reviews API: {e}")  # Debugging
+                        return jsonify({"response": "There was an error submitting your feedback. Please try again later."})
+
+        # Detect user intent from the conversation
+        if "complaint" in user_message.lower():
+            user_states[user_id] = {"state": "collecting_data", "data": {}, "intent": "complaint"}
+            return jsonify({"response": "Sure, I can help you lodge a complaint. Please provide your email to get started."})
+
+        elif "leave" in user_message.lower():
+            user_states[user_id] = {"state": "collecting_data", "data": {}, "intent": "leave"}
+            return jsonify({"response": "Sure, I can help you file a leave form. Please provide your name to get started."})
+
+        elif "feedback" in user_message.lower():
+            user_states[user_id] = {"state": "collecting_data", "data": {}, "intent": "feedback"}
+            return jsonify({"response": "Sure, I can help you give feedback. Please provide the day of the meal (e.g., Monday, Tuesday, etc.)."})
+
+        # Default response for general conversation
+        else:
+            # Use the AI model for general conversation
+            prompt = (
+                "You are a friendly and knowledgeable AI assistant for hostel and mess operations. "
+                "Your job is to answer students' questions in a friendly, engaging, and concise manner. "
+                "Use the database for knowledge and provide small, to-the-point answers. "
+                "If the question is about food, include an analysis of the food quality or nutritional value if relevant. "
+                "Structure your answers with bullet points and highlight key information using **bold text**. "
+                "Keep the tone friendly and approachable.\n\n"
+                f"### Student's Question:\n{user_message}\n\n"
+                "### Guidelines:\n"
+                "- Be concise and to the point.\n"
+                "- Use bullet points for clarity.\n"
+                "- Highlight important details with **bold text**.\n"
+                "- Keep the tone friendly and engaging.\n\n"
+                "### Answer:\n"
+            )
+
+            try:
+                response = model.generate_content(prompt)
+                if not response or not response.text:
+                    return jsonify({"response": "I'm sorry, I couldn't understand your request. Could you please rephrase it?"})
+                return jsonify({"response": response.text})
+            except Exception as ai_error:
+                print("AI generation error:", str(ai_error))
+                print("Traceback:", traceback.format_exc())
+                return jsonify({"response": "I'm sorry, I couldn't process your request. Please try again later."})
+
+    except Exception as e:
+        print("Unexpected error:", str(e))
+        print("Traceback:", traceback.format_exc())
+        return jsonify({"error": "Internal server error"}), 500
 
 @agent_bp.route('/agent', methods=['POST'])
 def agent():

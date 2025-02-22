@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { FaRobot, FaTimes } from 'react-icons/fa';
 import { BiSend } from 'react-icons/bi';
 import { BsFillChatSquareTextFill } from 'react-icons/bs';
+import Chatbot from './Chatbot';
 
 import StudentProfile from '../lib/const/StudentProfile.json';
 
@@ -21,14 +22,22 @@ const Layout = () => {
   const [response, setResponse] = useState(null);
   const [foodItems, setFoodItems] = useState([]);
   const [selectedFood, setSelectedFood] = useState('');
+  const [showQuestionList, setShowQuestionList] = useState(false);
 
-  // Fetch food items when component mounts
+  // Predefined questions
+  const predefinedQuestions = [
+    "What are the nutritional benefits of today's menu?",
+    "How can we improve the food quality?",
+    "What are the most common complaints about the food?",
+    "What are the healthiest options available?",
+    "How can we reduce food waste in the mess?"
+  ];
+
   useEffect(() => {
     const fetchFoodItems = async () => {
       try {
         const response = await fetch('http://127.0.0.1:5000/analytics');
         const data = await response.json();
-        // Extract unique food items from analytics data
         const foods = Object.keys(data);
         setFoodItems(foods);
       } catch (error) {
@@ -156,15 +165,35 @@ const Layout = () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Your Question
                         </label>
-                        <textarea 
-                          className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 
-                                     focus:ring-blue-500 focus:border-blue-500 transition-all resize-none 
-                                     bg-white shadow-sm hover:border-blue-400"
-                          placeholder="Ask about food quality, nutrition, suggestions for improvement..."
-                          value={question}
-                          onChange={(e) => setQuestion(e.target.value)}
-                          disabled={loading}
-                        />
+                        <div className="relative">
+                          <textarea 
+                            className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 
+                                       focus:ring-blue-400 focus:border-blue-400 transition-all resize-none 
+                                       bg-white shadow-sm hover:border-blue-300"
+                            placeholder="Ask about food quality, nutrition, suggestions for improvement..."
+                            value={question}
+                            onChange={(e) => setQuestion(e.target.value)}
+                            onFocus={() => setShowQuestionList(true)}
+                            onBlur={() => setTimeout(() => setShowQuestionList(false), 200)}
+                            disabled={loading}
+                          />
+                          {showQuestionList && (
+                            <ul className="absolute z-10 bg-white border border-gray-300 rounded-lg shadow-lg mt-1 w-full max-h-40 overflow-y-auto">
+                              {predefinedQuestions.map((q, index) => (
+                                <li
+                                  key={index}
+                                  className="p-2 hover:bg-blue-100 cursor-pointer"
+                                  onClick={() => {
+                                    setQuestion(q);
+                                    setShowQuestionList(false);
+                                  }}
+                                >
+                                  {q}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex justify-end gap-3 pt-4">
@@ -181,8 +210,8 @@ const Layout = () => {
                         </button>
                         <button 
                           onClick={handleAskAI}
-                          className={`flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 
-                                     text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all 
+                          className={`flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 
+                                     text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all 
                                      font-medium shadow-sm hover:shadow-md ${
                             loading ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
@@ -253,7 +282,7 @@ const Layout = () => {
       {/* Enhanced AI Response Box */}
       {response && (
         <div className="fixed bottom-4 right-4 max-w-xl w-full bg-white rounded-xl shadow-2xl overflow-hidden transform transition-all duration-300 ease-in-out hover:shadow-3xl">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 flex justify-between items-center">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <BsFillChatSquareTextFill className="text-xl" />
               <h3 className="font-semibold text-lg">
@@ -282,6 +311,9 @@ const Layout = () => {
           </div>
         </div>
       )}
+
+      {/* Chatbot */}
+      <Chatbot />
     </div>
   );
 };

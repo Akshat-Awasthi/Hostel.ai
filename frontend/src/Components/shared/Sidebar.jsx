@@ -168,7 +168,7 @@ const Sidebar = () => {
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto px-3 py-6">
+        <div className="flex-1 h-[42.3rem] overflow-y-auto px-3 py-6">
           <nav>
             {Sidebar_Links.map((item) => (
               <SideLink key={item.key} item={item} />
