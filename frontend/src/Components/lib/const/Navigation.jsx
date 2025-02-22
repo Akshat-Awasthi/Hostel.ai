@@ -39,12 +39,12 @@ export const Sidebar_Links = [
     path: '/complaint',
     icon: <IoWarningOutline className="text-xl" />  // Warning/alert icon for complaints
   },
-  // {
-  //   key: 'attendance',
-  //   label: 'Attendance',
-  //   path: '/attendance',
-  //   icon: <LuCalendarCheck2 className="text-xl" />  // Calendar with checkmark
-  // },
+  {
+    key: 'attendance',
+    label: 'Attendance',
+    path: '/attendence',
+    icon: <LuCalendarCheck2 className="text-xl" />  // Calendar with checkmark
+  },
   {
     key: 'sentiment-analysis',
     label: 'Sentiment Analysis',

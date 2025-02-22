@@ -1,49 +1,35 @@
-import React, { useEffect, useRef, useState } from "react";
+// File: attendance.jsx
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 
-/**
- * ATTENDENCE COMPONENT
- * 
- * Make sure your Flask server is running on http://127.0.0.1:5000
- * and has the relevant endpoints:
- *  - /register-faces (POST) 
- *  - /recognize-face (POST)
- *  - /mark-attendance (POST)
- *  - /attendance-status (GET)
- * 
- * Also ensure Flask has CORS(app) to allow cross-origin from localhost:3000
- */
-const Attendence = () => {
-  const [view, setView] = useState("home");
+function Attendance() {
+  // Toggle between "register" and "recognize"
+  const [mode, setMode] = useState("register");
 
-  // Camera references
+  // Camera refs & state
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null);
 
-  // ----- Registration state -----
-  const [capturedImages, setCapturedImages] = useState([]);
-  const [studentName, setStudentName] = useState("");
-  const [studentRoll, setStudentRoll] = useState("");
+  // Register states
+  const [regName, setRegName] = useState("");
+  const [regMessage, setRegMessage] = useState("");
 
-  // ----- Recognition state -----
-  const [recognizeImage, setRecognizeImage] = useState("");
-  const [recognizeResult, setRecognizeResult] = useState("");
+  // Recognize states
+  const [recMessage, setRecMessage] = useState("");
   const [recognizedName, setRecognizedName] = useState("");
-  const [recognizedRoll, setRecognizedRoll] = useState("");
+  const [confidence, setConfidence] = useState(null);
 
-  // ----- Attendance state -----
-  const [attendedToday, setAttendedToday] = useState([]);
-  const [notAttendedToday, setNotAttendedToday] = useState([]);
-
-  // ----------------------------------------------------------------
-  // On component mount, fetch attendance
-  // ----------------------------------------------------------------
+  // ----------------------------
+  // 1. CAMERA FUNCTIONS
+  // ----------------------------
   useEffect(() => {
-    fetchAttendanceStatus();
+    // Start camera automatically on mount (optional)
+    startCamera();
+    // Cleanup on unmount
+    return () => stopCamera();
   }, []);
 
-  // ----------------------------------------------------------------
-  // Camera control
-  // ----------------------------------------------------------------
   const startCamera = async () => {
     try {
       const userStream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -51,9 +37,9 @@ const Attendence = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = userStream;
       }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      alert("Could not access camera. Check permissions!");
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+      alert("Could not access camera. Check permissions or use HTTPS!");
     }
   };
 
@@ -71,392 +57,237 @@ const Attendence = () => {
     canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg"); // returns base64
+    // Returns base64-encoded image (JPEG)
+    return canvas.toDataURL("image/jpeg");
   };
 
-  // ----------------------------------------------------------------
-  // Registration Flow
-  // ----------------------------------------------------------------
-  const handleStartRegister = () => {
-    setView("register");
-    setCapturedImages([]);
-    setStudentName("");
-    setStudentRoll("");
-    setRecognizeImage("");
-    startCamera();
-  };
-
+  // ----------------------------
+  // 2. REGISTER FLOW
+  // ----------------------------
   const handleCaptureRegisterPhoto = () => {
     const frame = captureFrame();
     if (frame) {
-      setCapturedImages(prev => [...prev, frame]);
+      setCapturedImage(frame);
+      setRegMessage("");
     }
   };
 
-  const handleClearCaptured = () => {
-    setCapturedImages([]);
-  };
-
-  const handleStopRegisterCamera = () => {
-    stopCamera();
-  };
-
-  const handleRegisterFaces = async () => {
-    if (!studentName || !studentRoll) {
-      alert("Please enter name and roll!");
+  const handleRegisterSubmit = async () => {
+    if (!regName) {
+      setRegMessage("Please provide a name.");
       return;
     }
-    if (capturedImages.length === 0) {
-      alert("No captured images to register!");
+    if (!capturedImage) {
+      setRegMessage("Please capture an image first.");
       return;
     }
     try {
-      const response = await fetch("http://127.0.0.1:5000/register-faces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: studentName,
-          roll: studentRoll,
-          images: capturedImages,
-        })
-      });
-      const data = await response.json();
-      if (data.status === "ok") {
-        alert(data.message);
-        // reset
-        stopCamera();
-        setCapturedImages([]);
-        setStudentName("");
-        setStudentRoll("");
-        setView("home");
-      } else {
-        alert("Error: " + data.message);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to register faces.");
+      // Convert base64 to Blob and append to FormData
+      const formData = base64ToFormData(capturedImage, regName);
+      // POST to /api/register
+      const response = await axios.post("http://localhost:5000/api/register", formData);
+      setRegMessage(response.data.message || "Registration successful.");
+    } catch (error) {
+      console.error(error);
+      setRegMessage(error.response?.data?.error || "Server error during registration.");
     }
   };
 
-  // ----------------------------------------------------------------
-  // Recognition Flow
-  // ----------------------------------------------------------------
-  const handleStartRecognize = () => {
-    setView("recognize");
-    setRecognizeImage("");
-    setRecognizeResult("");
-    setRecognizedName("");
-    setRecognizedRoll("");
-    startCamera();
-  };
-
+  // ----------------------------
+  // 3. RECOGNITION FLOW
+  // ----------------------------
   const handleCaptureRecognizePhoto = () => {
     const frame = captureFrame();
     if (frame) {
-      setRecognizeImage(frame);
+      setCapturedImage(frame);
+      setRecMessage("");
+      setRecognizedName("");
+      setConfidence(null);
     }
   };
 
-  const handleStopRecognizeCamera = () => {
-    stopCamera();
-  };
-
-  const handleRecognizeFace = async () => {
-    if (!recognizeImage) {
-      alert("No captured image for recognition!");
-      return;
-    }
-    setRecognizeResult("Recognizing...");
-
-    try {
-      const res = await fetch("http://127.0.0.1:5000/recognize-face", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: recognizeImage }),
-      });
-      const data = await res.json();
-      if (data.status === "ok") {
-        if (!data.recognized) {
-          setRecognizeResult("No face detected or Unknown face.");
-          setRecognizedName("");
-          setRecognizedRoll("");
-        } else {
-          setRecognizeResult(`Recognized: ${data.name} (Roll: ${data.roll})`);
-          setRecognizedName(data.name);
-          setRecognizedRoll(data.roll);
-        }
-      } else {
-        setRecognizeResult("Error: " + data.message);
-      }
-    } catch (err) {
-      console.error(err);
-      setRecognizeResult("Error recognizing face.");
-    }
-  };
-
-  const handleMarkAttendance = async () => {
-    if (!recognizedName || !recognizedRoll) {
-      alert("No recognized student info.");
+  const handleRecognizeSubmit = async () => {
+    if (!capturedImage) {
+      setRecMessage("Please capture an image first.");
       return;
     }
     try {
-      const res = await fetch("http://127.0.0.1:5000/mark-attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: recognizedName, roll: recognizedRoll })
-      });
-      const data = await res.json();
-      if (data.status === "ok") {
-        alert(data.message);
-        fetchAttendanceStatus();
-      } else {
-        alert("Error: " + data.message);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error marking attendance.");
+      const formData = base64ToFormData(capturedImage);
+      // POST to /api/recognize
+      const response = await axios.post("http://localhost:5000/api/recognize", formData);
+      setRecMessage(response.data.message || "Recognition complete.");
+      setRecognizedName(response.data.name || "");
+      setConfidence(response.data.confidence || null);
+    } catch (error) {
+      console.error(error);
+      setRecMessage(error.response?.data?.error || "Server error during recognition.");
     }
   };
 
-  // ----------------------------------------------------------------
-  // Attendance Status
-  // ----------------------------------------------------------------
-  const fetchAttendanceStatus = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:5000/attendance-status");
-      const data = await res.json();
-      if (data.status === "ok") {
-        setAttendedToday(data.attended_today);
-        setNotAttendedToday(data.not_attended_today);
-      }
-    } catch (err) {
-      console.error(err);
+  // ----------------------------
+  // 4. HELPER: Convert Base64 to FormData
+  // ----------------------------
+  // For "register", we need { name, image }; for "recognize", just { image }.
+  const base64ToFormData = (base64, name = "") => {
+    // Convert base64 -> Blob
+    const blob = base64ToBlob(base64);
+    const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+    const formData = new FormData();
+    // If name is provided, we're registering
+    if (name) {
+      formData.append("name", name);
     }
+    formData.append("image", file);
+    return formData;
   };
 
-  // ----------------------------------------------------------------
-  // Render
-  // ----------------------------------------------------------------
+  // Convert base64 data URL to a raw Blob
+  const base64ToBlob = (dataURL) => {
+    const [header, base64] = dataURL.split(",");
+    // Example: header => "data:image/jpeg;base64"
+    const mimeMatch = header.match(/:(.*?);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+
+    const binary = atob(base64);
+    const len = binary.length;
+    const buffer = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      buffer[i] = binary.charCodeAt(i);
+    }
+    return new Blob([buffer], { type: mimeType });
+  };
+
+  // ----------------------------
+  // RENDER
+  // ----------------------------
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Face Attendance System</h1>
-
-      {/* Navigation */}
-      <div className="flex space-x-2 mb-4">
-        <button
-          onClick={() => {
-            setView("home");
-            stopCamera();
-          }}
-          className="bg-gray-400 text-white px-4 py-2 rounded"
-        >
-          Home
-        </button>
-        <button
-          onClick={handleStartRegister}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          Register Student
-        </button>
-        <button
-          onClick={handleStartRecognize}
-          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-        >
-          Recognize & Mark
-        </button>
-      </div>
-
-      {/* Home View */}
-      {view === "home" && (
-        <div>
-          <p className="text-gray-600">Choose an option above.</p>
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold">Today's Attendance</h3>
-            <button
-              onClick={fetchAttendanceStatus}
-              className="bg-green-500 text-white px-4 py-2 rounded mt-2"
-            >
-              Refresh
-            </button>
-            <div className="mt-4">
-              <h4 className="font-medium">Attended Today</h4>
-              <ul className="list-disc list-inside ml-4">
-                {attendedToday.map((s, idx) => (
-                  <li key={idx}>
-                    {s.name} (Roll: {s.roll})
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-4">
-              <h4 className="font-medium">Not Attended Yet</h4>
-              <ul className="list-disc list-inside ml-4">
-                {notAttendedToday.map((s, idx) => (
-                  <li key={idx}>
-                    {s.name} (Roll: {s.roll})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Video Preview when in register or recognize */}
-      {(view === "register" || view === "recognize") && (
-        <div className="mb-4 max-w-md">
-          <video
-            ref={videoRef}
-            className="border border-gray-300 w-full"
-            autoPlay
-            playsInline
-          />
-        </div>
-      )}
-
-      {/* Register View */}
-      {view === "register" && (
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Register a New Student</h2>
-          <div className="space-x-2 mb-4">
-            <button
-              onClick={handleCaptureRegisterPhoto}
-              className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded"
-            >
-              Capture Photo
-            </button>
-            <button
-              onClick={handleClearCaptured}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
-            >
-              Clear Photos
-            </button>
-            <button
-              onClick={handleStopRegisterCamera}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-            >
-              Stop Camera
-            </button>
-          </div>
-          {/* Thumbnails */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {capturedImages.map((img, idx) => (
-              <img
-                key={idx}
-                src={img}
-                alt={`Captured ${idx}`}
-                className="w-24 h-24 object-cover border border-gray-200"
-              />
-            ))}
-          </div>
-          {/* Name & Roll */}
-          <div className="max-w-sm mb-4">
-            <label className="block mb-1 font-medium">Name</label>
-            <input
-              type="text"
-              className="border border-gray-300 rounded px-2 py-1 w-full mb-2"
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-            />
-            <label className="block mb-1 font-medium">Roll No</label>
-            <input
-              type="text"
-              className="border border-gray-300 rounded px-2 py-1 w-full mb-2"
-              value={studentRoll}
-              onChange={(e) => setStudentRoll(e.target.value)}
-            />
-            <button
-              onClick={handleRegisterFaces}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-            >
-              Register
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Recognize View */}
-      {view === "recognize" && (
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Recognize & Mark Attendance</h2>
-          <div className="space-x-2 mb-2">
-            <button
-              onClick={handleCaptureRecognizePhoto}
-              className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded"
-            >
-              Capture Photo
-            </button>
-            <button
-              onClick={handleStopRecognizeCamera}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-            >
-              Stop Camera
-            </button>
-          </div>
-          {/* Recognize Photo Preview */}
-          {recognizeImage && (
-            <div className="mb-2">
-              <img
-                src={recognizeImage}
-                alt="Recognize capture"
-                className="w-32 h-32 object-cover border border-gray-300"
-              />
-            </div>
-          )}
-          {/* Recognize Button */}
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-xl mx-auto bg-white p-4 rounded shadow">
+        <h1 className="text-2xl font-bold mb-4 text-center">Face Attendance System</h1>
+        
+        {/* Mode Selector */}
+        <div className="flex justify-center space-x-2 mb-4">
           <button
-            onClick={handleRecognizeFace}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mb-2"
+            className={`px-4 py-2 rounded ${mode === "register" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+            onClick={() => {
+              setMode("register");
+              setCapturedImage(null);
+              setRegMessage("");
+              setRegName("");
+            }}
+          >
+            Register
+          </button>
+          <button
+            className={`px-4 py-2 rounded ${mode === "recognize" ? "bg-green-500 text-white" : "bg-gray-200"}`}
+            onClick={() => {
+              setMode("recognize");
+              setCapturedImage(null);
+              setRecMessage("");
+              setRecognizedName("");
+              setConfidence(null);
+            }}
           >
             Recognize
           </button>
-          {/* Result */}
-          {recognizeResult && <p className="text-gray-700">{recognizeResult}</p>}
-          {/* If recognized, Mark Attendance */}
-          {recognizedName && recognizedRoll && (
-            <div className="mt-4">
-              <button
-                onClick={handleMarkAttendance}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-              >
-                Mark Attendance
-              </button>
-            </div>
-          )}
-          {/* Show attendance again */}
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold">Today's Attendance</h3>
-            <button
-              onClick={fetchAttendanceStatus}
-              className="bg-green-500 text-white px-4 py-2 rounded mt-2"
-            >
-              Refresh
-            </button>
-            <div className="mt-4">
-              <h4 className="font-medium">Attended Today</h4>
-              <ul className="list-disc list-inside ml-4">
-                {attendedToday.map((s, idx) => (
-                  <li key={idx}>
-                    {s.name} (Roll: {s.roll})
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-4">
-              <h4 className="font-medium">Not Attended Yet</h4>
-              <ul className="list-disc list-inside ml-4">
-                {notAttendedToday.map((s, idx) => (
-                  <li key={idx}>
-                    {s.name} (Roll: {s.roll})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
         </div>
-      )}
+
+        {/* VIDEO PREVIEW */}
+        <video
+          ref={videoRef}
+          className="border mb-4 w-full"
+          autoPlay
+          playsInline
+        />
+
+        {/* CAPTURE BUTTONS */}
+        {mode === "register" && (
+          <div className="mb-4">
+            <button
+              onClick={handleCaptureRegisterPhoto}
+              className="bg-blue-600 text-white px-4 py-2 rounded mr-2"
+            >
+              Capture Photo
+            </button>
+            <span className="text-sm text-gray-600">
+              Capture at least one clear photo to register.
+            </span>
+          </div>
+        )}
+        {mode === "recognize" && (
+          <div className="mb-4">
+            <button
+              onClick={handleCaptureRecognizePhoto}
+              className="bg-green-600 text-white px-4 py-2 rounded mr-2"
+            >
+              Capture Photo
+            </button>
+            <span className="text-sm text-gray-600">
+              Capture a clear photo to recognize.
+            </span>
+          </div>
+        )}
+
+        {/* CAPTURED IMAGE PREVIEW */}
+        {capturedImage && (
+          <div className="mb-4 text-center">
+            <p className="font-semibold mb-1">Captured Image</p>
+            <img src={capturedImage} alt="Captured" className="mx-auto border max-h-48" />
+          </div>
+        )}
+
+        {/* REGISTER SECTION */}
+        {mode === "register" && (
+          <div>
+            {/* Name Input */}
+            <div className="mb-2">
+              <label className="block mb-1 font-medium">Name:</label>
+              <input
+                type="text"
+                className="border rounded px-2 py-1 w-full"
+                placeholder="Enter Name"
+                value={regName}
+                onChange={(e) => setRegName(e.target.value)}
+              />
+            </div>
+
+            <button
+              onClick={handleRegisterSubmit}
+              className="bg-purple-600 text-white px-4 py-2 rounded w-full"
+            >
+              Register Face
+            </button>
+
+            {regMessage && <p className="mt-2 text-blue-600 text-center">{regMessage}</p>}
+          </div>
+        )}
+
+        {/* RECOGNIZE SECTION */}
+        {mode === "recognize" && (
+          <div>
+            <button
+              onClick={handleRecognizeSubmit}
+              className="bg-purple-600 text-white px-4 py-2 rounded w-full"
+            >
+              Recognize Face
+            </button>
+            {recMessage && <p className="mt-2 text-blue-600 text-center">{recMessage}</p>}
+            {/* If recognized, show name & confidence */}
+            {recognizedName && recognizedName !== "Unknown" && (
+              <p className="mt-2 text-green-600 text-center">
+                Attendance Marked for {recognizedName}!
+                {confidence && (
+                  <span className="block text-sm text-gray-600">
+                    (Confidence: {confidence.toFixed(2)})
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
-};
+}
 
-export default Attendence;
+export default Attendance;
